@@ -25,12 +25,13 @@ async def health_check():
     return {"status": "ok", "service": "OpenKombai Backend"}
 
 @app.post("/generate", response_model=GenerateResponse)
-async def generate_code(file: UploadFile = File(...)):
+async def generate_code(
+    file: UploadFile = File(...),
+    vision_model: str = "llama3.2-vision",
+    code_model: str = "qwen2.5-coder"
+):
     """
     Takes an uploaded image (screenshot) and generates React code using local LLMs.
-    Pipeline:
-    1. Vision Model (llama3.2-vision) -> Describes the UI
-    2. Code Model (qwen2.5-coder) -> Writes the React Code
     """
     
     # 1. Validate Image
@@ -47,9 +48,9 @@ async def generate_code(file: UploadFile = File(...)):
         img_bytes = img_byte_arr.getvalue()
 
         # 2. Vision Step: Describe the UI
-        print("👀 Analyzing image with Llama 3.2 Vision...")
+        print(f"👀 Analyzing image with {vision_model}...")
         vision_response = ollama.chat(
-            model='llama3.2-vision',
+            model=vision_model,
             messages=[{
                 'role': 'user',
                 'content': 'Describe this UI in technical detail. List the layout components (header, sidebar, main content), specific colors (approximate hex), typography style, and any interactive elements (buttons, inputs). Be precise.',
@@ -60,7 +61,7 @@ async def generate_code(file: UploadFile = File(...)):
         print(f"✅ Description generated: {description[:100]}...")
 
         # 3. Code Step: Generate React Code
-        print("💻 Generating code with Qwen 2.5 Coder...")
+        print(f"💻 Generating code with {code_model}...")
         prompt = f"""
         You are an expert Frontend Developer. 
         Build the React component described below.
@@ -78,7 +79,7 @@ async def generate_code(file: UploadFile = File(...)):
         """
 
         code_response = ollama.chat(
-            model='qwen2.5-coder',
+            model=code_model,
             messages=[{'role': 'user', 'content': prompt}]
         )
         code = code_response['message']['content']

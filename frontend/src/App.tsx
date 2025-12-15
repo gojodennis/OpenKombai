@@ -15,6 +15,7 @@ function App() {
   const [code, setCode] = useState<string>('// Generated code will appear here...');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isLowSpec, setIsLowSpec] = useState(false);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -34,6 +35,14 @@ function App() {
     try {
       const formData = new FormData();
       formData.append('file', image);
+
+      if (isLowSpec) {
+        formData.append('vision_model', 'moondream');
+        formData.append('code_model', 'qwen2.5-coder:1.5b');
+      } else {
+        formData.append('vision_model', 'llama3.2-vision');
+        formData.append('code_model', 'qwen2.5-coder');
+      }
 
       // Point to Python Backend
       const response = await axios.post('http://localhost:8000/generate', formData, {
@@ -109,6 +118,24 @@ function App() {
               <><Play size={20} /> Generate React Code</>
             )}
           </button>
+
+          <div className="flex items-center justify-between p-3 bg-neutral-800/50 rounded-lg border border-neutral-800">
+            <div className="flex items-center gap-2">
+              <div className={cn("p-1.5 rounded", isLowSpec ? "bg-amber-500/10 text-amber-500" : "bg-neutral-800 text-neutral-400")}>
+                {/* Icon */}
+              </div>
+              <div className="flex flex-col">
+                <span className="text-sm font-medium text-neutral-200">Low Resource Mode</span>
+                <span className="text-[10px] text-neutral-500">Use lighter models (Moondream + Qwen 1.5B)</span>
+              </div>
+            </div>
+            <button
+              onClick={() => setIsLowSpec(!isLowSpec)}
+              className={cn("w-10 h-6 rounded-full relative transition-colors", isLowSpec ? "bg-amber-600" : "bg-neutral-700")}
+            >
+              <div className={cn("absolute top-1 w-4 h-4 rounded-full bg-white transition-all", isLowSpec ? "left-5" : "left-1")} />
+            </button>
+          </div>
 
           {error && (
             <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-200 text-sm flex items-start gap-2">
