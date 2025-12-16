@@ -27,8 +27,8 @@ async def health_check():
 @app.post("/generate", response_model=GenerateResponse)
 async def generate_code(
     file: UploadFile = File(...),
-    vision_model: str = "llama3.2-vision",
-    code_model: str = "qwen2.5-coder"
+    vision_model: str = "moondream",
+    code_model: str = "qwen2.5-coder:1.5b"
 ):
     """
     Takes an uploaded image (screenshot) and generates React code using local LLMs.
@@ -49,38 +49,51 @@ async def generate_code(
 
         # 2. Vision Step: Describe the UI
         print(f"👀 Analyzing image with {vision_model}...")
+        
+        # Read vision system prompt from file
+        try:
+            with open("prompts/vision_system.md", "r", encoding="utf-8") as f:
+                vision_system = f.read().strip()
+        except FileNotFoundError:
+            print("⚠️ Vision system prompt file not found. Using default.")
+            vision_system = "You are an expert UI/UX Designer with a keen eye for technical detail. accurately describe layout, colors, and typography."
+
+        vision_user_content = "Describe this UI in technical detail. List the layout components (header, sidebar, main content), specific colors (approximate hex), typography style, and any interactive elements (buttons, inputs). Be precise."
+        
         vision_response = ollama.chat(
             model=vision_model,
-            messages=[{
-                'role': 'user',
-                'content': 'Describe this UI in technical detail. List the layout components (header, sidebar, main content), specific colors (approximate hex), typography style, and any interactive elements (buttons, inputs). Be precise.',
-                'images': [img_bytes]
-            }]
+            messages=[
+                {'role': 'system', 'content': vision_system},
+                {
+                    'role': 'user',
+                    'content': vision_user_content,
+                    'images': [img_bytes]
+                }
+            ]
         )
         description = vision_response['message']['content']
         print(f"✅ Description generated: {description[:100]}...")
 
         # 3. Code Step: Generate React Code
         print(f"💻 Generating code with {code_model}...")
-        prompt = f"""
-        You are an expert Frontend Developer. 
-        Build the React component described below.
         
-        Stack: React (Functional Components), Tailwind CSS, Lucide React (for icons).
-        
-        UI Description:
-        {description}
-        
-        Requirements:
-        - Use Tailwind for ALL styling.
-        - Use Lucide React for icons (import {{ IconName }} from 'lucide-react').
-        - Output ONLY the code. Do not wrap in markdown code blocks like ```jsx. Just the code.
-        - Ensure the code is a valid, standalone React component named 'GeneratedComponent'.
-        """
+        # Read code generation system prompt from file
+        try:
+            with open("prompts/code_gen_system.md", "r", encoding="utf-8") as f:
+                system_prompt = f.read().strip()
+        except FileNotFoundError:
+             print("⚠️ Code generation system prompt file not found. Using default.")
+             system_prompt = "You are an expert Frontend Developer. Build the React component described by the user."
+
+        user_prompt = f"""UI Description:
+{description}"""
 
         code_response = ollama.chat(
             model=code_model,
-            messages=[{'role': 'user', 'content': prompt}]
+            messages=[
+                {'role': 'system', 'content': system_prompt},
+                {'role': 'user', 'content': user_prompt}
+            ]
         )
         code = code_response['message']['content']
         

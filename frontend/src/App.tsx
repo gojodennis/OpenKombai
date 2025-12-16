@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import Editor from '@monaco-editor/react';
-import { Upload, Code, Play, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { Upload, Code, Play, CheckCircle, AlertCircle, Loader2, Settings } from 'lucide-react';
 import axios from 'axios';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { SettingsModal } from './components/SettingsModal';
 
-function cn(...inputs: (string | undefined)[]) {
+export function cn(...inputs: (string | undefined)[]) {
   return twMerge(clsx(inputs));
 }
 
@@ -15,7 +16,11 @@ function App() {
   const [code, setCode] = useState<string>('// Generated code will appear here...');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isLowSpec, setIsLowSpec] = useState(false);
+
+  // Model Settings State
+  const [showSettings, setShowSettings] = useState(false);
+  const [visionModel, setVisionModel] = useState('llama3.2-vision');
+  const [codeModel, setCodeModel] = useState('qwen2.5-coder');
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -35,14 +40,8 @@ function App() {
     try {
       const formData = new FormData();
       formData.append('file', image);
-
-      if (isLowSpec) {
-        formData.append('vision_model', 'moondream');
-        formData.append('code_model', 'qwen2.5-coder:1.5b');
-      } else {
-        formData.append('vision_model', 'llama3.2-vision');
-        formData.append('code_model', 'qwen2.5-coder');
-      }
+      formData.append('vision_model', visionModel);
+      formData.append('code_model', codeModel);
 
       // Point to Python Backend
       const response = await axios.post('http://localhost:8000/generate', formData, {
@@ -72,6 +71,12 @@ function App() {
           <span className="text-xs bg-neutral-800 text-neutral-400 px-2 py-0.5 rounded ml-2">v0.1.0-alpha</span>
         </div>
         <div className="flex gap-2">
+          <button
+            onClick={() => setShowSettings(true)}
+            className="text-sm text-neutral-400 hover:text-white transition-colors flex items-center gap-1"
+          >
+            <Settings size={16} /> Settings
+          </button>
           <a href="https://github.com/yourusername/open-kombai" target="_blank" className="text-sm text-neutral-400 hover:text-white transition-colors">GitHub</a>
         </div>
       </header>
@@ -120,21 +125,22 @@ function App() {
           </button>
 
           <div className="flex items-center justify-between p-3 bg-neutral-800/50 rounded-lg border border-neutral-800">
-            <div className="flex items-center gap-2">
-              <div className={cn("p-1.5 rounded", isLowSpec ? "bg-amber-500/10 text-amber-500" : "bg-neutral-800 text-neutral-400")}>
-                {/* Icon */}
+            <div className="flex flex-col gap-1 w-full">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-neutral-400">Vision Model</span>
+                <span className="text-xs text-blue-400">{visionModel}</span>
               </div>
-              <div className="flex flex-col">
-                <span className="text-sm font-medium text-neutral-200">Low Resource Mode</span>
-                <span className="text-[10px] text-neutral-500">Use lighter models (Moondream + Qwen 1.5B)</span>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-neutral-400">Code Model</span>
+                <span className="text-xs text-blue-400">{codeModel}</span>
               </div>
+              <button
+                onClick={() => setShowSettings(true)}
+                className="mt-2 w-full text-xs bg-neutral-800 hover:bg-neutral-700 text-neutral-300 py-1.5 rounded flex items-center justify-center gap-1 transition-colors"
+              >
+                <Settings size={12} /> Configure Models
+              </button>
             </div>
-            <button
-              onClick={() => setIsLowSpec(!isLowSpec)}
-              className={cn("w-10 h-6 rounded-full relative transition-colors", isLowSpec ? "bg-amber-600" : "bg-neutral-700")}
-            >
-              <div className={cn("absolute top-1 w-4 h-4 rounded-full bg-white transition-all", isLowSpec ? "left-5" : "left-1")} />
-            </button>
           </div>
 
           {error && (
@@ -178,6 +184,15 @@ function App() {
           />
         </div>
       </main>
+
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        visionModel={visionModel}
+        setVisionModel={setVisionModel}
+        codeModel={codeModel}
+        setCodeModel={setCodeModel}
+      />
     </div>
   );
 }
