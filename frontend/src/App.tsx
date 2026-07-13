@@ -1,16 +1,18 @@
 import { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Editor from '@monaco-editor/react';
-import { Upload, Code, Play, CheckCircle, AlertCircle, Loader2, Settings } from 'lucide-react';
+import { Upload, Code, Play, AlertCircle, Loader2, Settings } from 'lucide-react';
 import axios from 'axios';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { SettingsModal } from './components/SettingsModal';
+import LandingPage from './LandingPage';
 
 export function cn(...inputs: (string | undefined)[]) {
   return twMerge(clsx(inputs));
 }
 
-function App() {
+function UIGeneratorApp() {
   const [image, setImage] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [code, setCode] = useState<string>('// Generated code will appear here...');
@@ -194,6 +196,17 @@ function App() {
         setCodeModel={setCodeModel}
       />
     </div>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/generator" element={<UIGeneratorApp />} />
+      </Routes>
+    </Router>
   );
 }
 
